@@ -9,8 +9,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using com.qwqaq.time_clock.Code.Utils;
 
-namespace com.qwqaq.time_clock.Code
+namespace com.qwqaq.time_clock.Code.Setting
 {
     public partial class SettingForm : Form
     {
@@ -22,11 +23,12 @@ namespace com.qwqaq.time_clock.Code
 
         private void RefreshValFromFile()
         {
-            admin_qq.Text = App.GetAdminQQ_Str();
             target_grp.Text = App.GetTargetGrp();
+            on_rec_times.Text = App.GetOnRecTimes_Str();
+            off_rec_times.Text = App.GetOffRecTimes_Str();
             ignore_qq.Text = App.GetIgnoreQQ_Str();
-            check_in_begin_times.Text = App.GetCheckInBeginTimesStr();
-            check_in_end_times.Text = App.GetCheckInEndTimesStr();
+            alert_qq.Text = App.GetAlertQQ_Str();
+            silent_mode.Checked = App.GetIsSilentMode();
         }
 
         private Timer saveBtnTimer = null;
@@ -47,11 +49,12 @@ namespace com.qwqaq.time_clock.Code
             };
             saveBtnTimer.Start();
 
-            App.IniFile.Write(INI_KEY.admin_qq, admin_qq.Text.Trim());
             App.IniFile.Write(INI_KEY.target_grp, target_grp.Text.Trim());
+            App.IniFile.Write(INI_KEY.on_rec_times, on_rec_times.Text.Trim());
+            App.IniFile.Write(INI_KEY.off_rec_times, off_rec_times.Text.Trim());
             App.IniFile.Write(INI_KEY.ignore_qq, ignore_qq.Text.Trim());
-            App.IniFile.Write(INI_KEY.check_in_begin_times, check_in_begin_times.Text.Trim());
-            App.IniFile.Write(INI_KEY.check_in_end_times, check_in_end_times.Text.Trim());
+            App.IniFile.Write(INI_KEY.alert_qq, alert_qq.Text.Trim());
+            App.IniFile.Write(INI_KEY.silent_mode, silent_mode.Checked ? "1" : "0");
             RefreshValFromFile();
         }
 
@@ -68,37 +71,12 @@ namespace com.qwqaq.time_clock.Code
         private void open_ini_file_Click(object sender, EventArgs e)
         {
             Process p = new Process();
-            p.StartInfo = new ProcessStartInfo(Path.Combine(Environment.CurrentDirectory, "CheckInStat.ini"));
+            p.StartInfo = new ProcessStartInfo(Path.Combine(Environment.CurrentDirectory, IniFile.APP_NAME + ".ini"));
             p.EnableRaisingEvents = true;    //一定要有这个才能触发Exited 事件
             p.Exited += new EventHandler((se, evt) => {
                 RefreshValFromFile();
             });
             p.Start();
-        }
-
-        private void check_in_begin_times_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void check_in_end_times_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label5_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label6_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void groupBox1_Enter(object sender, EventArgs e)
-        {
-
         }
     }
 }

@@ -12,6 +12,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using com.qwqaq.time_clock.Code.Setting;
+using com.qwqaq.time_clock.Code.Utils;
 
 namespace com.qwqaq.time_clock.Code
 {
@@ -22,12 +24,12 @@ namespace com.qwqaq.time_clock.Code
         public static CQLog CQLog = null;
 
         public static IniFile IniFile = new IniFile();
-        public static string DataFileFolder = Path.Combine(Environment.CurrentDirectory, "CheckInStatData");
+        public static string DataFolder = Path.Combine(Environment.CurrentDirectory, "time-clock-data");
 
         /// <summary>
-        /// 处于窗口期的打卡开始时间
+        /// 正在运行的 Rec 开始时间
         /// </summary>
-        public static string CheckingBeginTime = null;
+        public static string OnRecTime = null; // null 为未在运行
 
         public static void AppStartup(CQApi cqApi, CQLog cqLog)
         {
@@ -36,8 +38,8 @@ namespace com.qwqaq.time_clock.Code
             CQApi = cqApi;
             CQLog = cqLog;
 
-            if (!Directory.Exists(DataFileFolder))
-                Directory.CreateDirectory(DataFileFolder); // 新建数据文件保存目录
+            if (!Directory.Exists(DataFolder))
+                Directory.CreateDirectory(DataFolder); // 新建数据目录
 
             // 启动定时器
             System.Timers.Timer timer = new System.Timers.Timer();
@@ -46,116 +48,114 @@ namespace com.qwqaq.time_clock.Code
             timer.Start();
             timer.Elapsed += new ElapsedEventHandler((o, e) => { CheckOnce(); });
             CheckOnce(); // 先立刻执行一次
-            CQLog.Info("打卡统计程序定时器已启用");
+            CQLog.Info("时间判断定时器运行");
         }
 
         #region Action
+        /// <summary>
+        /// Rec 功能是否启用
+        /// </summary>
+        /// <returns></returns>
+        public static bool GetIsRecFuncEnable()
+        {
+            return GetTargetGrp() != "" && GetOnRecTimes_Str() != "" && GetOffRecTimes_Str() != "";
+        }
+
         /// <summary>
         /// 检测一次，控制打卡开启结束
         /// </summary>
         public static void CheckOnce()
         {
-            if (GetTargetGrp().Equals("") || GetCheckInBeginTimesStr().Equals("") || GetCheckInEndTimesStr().Equals(""))
-                return;
+            if (!GetIsRecFuncEnable()) return; // 若 Rec 功能已禁用
 
             DateTime now_dt = DateTime.Now;
             int now_h = now_dt.Hour, now_m = now_dt.Minute;
 
-            if (CheckingBeginTime == null)
+            // 未开启
+            if (OnRecTime == null)
             {
-                // 未在打卡，检查是否已到打卡时间
-                foreach (var beginTime in GetCheckInBeginTimes())
-                {
-                    var beginTime_hm = ParseTime(beginTime);
-                    if ((
-                        now_h == beginTime_hm[0]
-                        && now_m == beginTime_hm[1]
-                    ))
-                    {   // 打卡时间到，可以打卡了
-                        BeginCheckIn(beginTime);
-                        break;
-                    }
-                }
+                var time = GetOnRecTimes().Find(o => ParseTime(o)[0] == now_h && ParseTime(o)[1] == now_m); // 当前是否为 开始时间
+                if (time != null) RecOn(time); // 开启时间 已到
             }
-            else
+
+            // 已开启
+            if (OnRecTime != null)
             {
-                // 正在打卡，检查是否已到结束时间
-                foreach (var endTime in GetCheckInEndTimes())
-                {
-                    var endTime_hm = ParseTime(endTime);
-                    if ((
-                        now_h == endTime_hm[0]
-                        && now_m == endTime_hm[1]
-                    ))
-                    {   // 打卡结束时间到，不能打卡了，标记为迟到
-                        EndCheckIn(endTime);
-                        break;
-                    }
-                }
+                var time = GetOffRecTimes().Find(o => ParseTime(o)[0] == now_h && ParseTime(o)[1] == now_m); // 当前是否为 截止时间
+                if (time != null) RecOff(time);  // 截止时间 已到
             }
         }
 
         /// <summary>
-        /// 开始打卡
+        /// 启动一次 打卡记录器
         /// </summary>
         /// <returns></returns>
-        public static void BeginCheckIn(string beginTime)
+        public static void RecOn(string onRecTime)
         {
-            if (CheckingBeginTime != null) return; // 避免重复调用
-            CheckingBeginTime = beginTime;
-            string filename = GetDataFileName(); // 必须在 CheckingBeginTime 后
-            if (!File.Exists(filename)) File.Create(filename).Dispose();
-            CQLog.Info($"{beginTime} 打卡开始");
+            if (OnRecTime != null) return; // Rec 本来就是开启状态
+            OnRecTime = onRecTime;
+
+            // 数据文件
+            string filename = GetDataFileName(); // 必须在 OnRecTime 后
+            if (!File.Exists(filename)) File.Create(filename).Dispose(); // 初始化数据文件
+
+            CQLog.Info($"{onRecTime} 打卡记录器 ON");
+
             // [CQ:face,id=187] 幽灵, [CQ:face,id=178] 滑稽
             SendToTargetGrpMsg(
                 $"[打卡机] 哔~\n" +
                 $"--------------\n" +
-                $"{beginTime} · 打卡机启动 [CQ:face,id=187][CQ:face,id=187]\n" +
-                $"(断电时间: {GetCheckInEndTimesStr()})\n" +
+                $"{onRecTime} · 打卡机启动 [CQ:face,id=187][CQ:face,id=187]\n" +
+                $"(断电时间: {GetOffRecTimes_Str()})\n" +
                 $"Powered by qwqaq.\n" +
                 $"--------------\n[课表] {GetSchedule(noWeekStr: true)}"
             );
         }
 
         /// <summary>
-        /// 结束打卡
+        /// 结束一次 打卡记录器
         /// </summary>
         /// <returns></returns>
-        public static void EndCheckIn(string endTime)
+        public static void RecOff(string offRecTime)
         {
-            if (CheckingBeginTime == null) return;
+            if (OnRecTime == null) return; // Rec 本来就是关闭状态
+
             // 添加未打卡成员
             string grpId = GetTargetGrp();
-            string filename = GetDataFileName();
-            if (!File.Exists(filename)) File.Create(filename).Dispose();
-            
-            // 记录迟到
-            var lines = File.ReadAllLines(filename).Where(o => !o.Trim().Equals("") && !o.Trim().StartsWith("-")); // 过滤空格 和 分隔符
-            var membersInGrp = CQApi.GetGroupMemberList(long.Parse(grpId))
-                .Where(o => !GetIgnoreQQ().Contains(o.QQ.Id.ToString()) && o.QQ.Id != CQApi.GetLoginQQId()); // 排除忽略的 QQ
-            var checkLen = lines.Count();
-            var lateLen = 0;
 
+            // 数据文件
+            string dataFile = GetDataFileName();
+            if (!File.Exists(dataFile)) File.Create(dataFile).Dispose();
+            
+            var recStrItems = File.ReadAllLines(dataFile).Where(o => !o.Trim().Equals("")).ToList(); // 已打卡的字符串数据
+
+            var yesCount = recStrItems.Count(); // 已打卡人数
+            var lateCount = 0; // 迟到人数
+            var lateNames = new Dictionary<string, string> { }; // 迟到成员 (qq->name)
+
+            var membersInGrp = CQApi.GetGroupMemberList(long.Parse(grpId)) // Q群所有成员
+                .Where(o => o.QQ.Id != CQApi.GetLoginQQId() && !GetIgnoreQQ().Contains(o.QQ.Id.ToString())); // 排除忽略的 QQ
             foreach (var member in membersInGrp)
             {
                 string memberQQ = member.QQ.Id.ToString();
-                string memberGrpCard = member.Card;
-                if (memberGrpCard.Trim().Equals("")) memberGrpCard = member.Nick;
-                memberGrpCard = GetMemberHandledName(memberGrpCard, memberQQ);
-                if (lines.Where(o => o.StartsWith(memberQQ)).Count() <= 0) // 未找到这个 QQ 号
+                string memberName = GetMemberHandledName(memberQQ, member.Card, member.Nick);
+                string findRecLineStr = recStrItems.Find(o => o.StartsWith(memberQQ));
+                if (findRecLineStr == null) // 不在打卡数据文件中，找不到这个 QQ
                 {
-                    // 未打卡，迟到处理
-                    File.AppendAllText(filename, $"{memberQQ},{memberGrpCard},,未打卡 ×" + Environment.NewLine);
-                    lateLen++;
+                    // 视为: 未打卡，迟到处理
+                    File.AppendAllText(dataFile, $"{memberQQ},{memberName},,未打卡 ×" + Environment.NewLine);
+                    lateNames[memberQQ] = memberName;
+                    lateCount++;
+                    App.CQLog.Info($"[×] {memberName}", "迟到");
                 }
             }
 
             SendToTargetGrpMsg(
                 $"[打卡机] 哔~\n" +
                 $"--------------\n" +
-                $"{endTime} · 打卡机已断电 [CQ:face,id=187][CQ:face,id=187]\n" +
-                $"打卡{checkLen}人 / 未打卡{lateLen}人\n" +
-                $"(下次启动时间: {GetCheckInBeginTimesStr()})\n" +
+                $"{offRecTime} · 打卡机已断电 [CQ:face,id=187][CQ:face,id=187]\n" +
+                $"打卡{yesCount}人 / 未打卡{lateCount}人\n" +
+                $"(下次启动时间: {GetOnRecTimes_Str()})\n" +
                 $"--------------\n[课表] {GetSchedule(noWeekStr: true)}"
             );
 
@@ -165,35 +165,54 @@ namespace com.qwqaq.time_clock.Code
             {
                 try
                 {
-                    var exeFile = Path.Combine(DataFileFolder, "ToExcelTool.exe");
+                    /*var exeFile = Path.Combine(DataFolder, "ToExcelTool.exe");
                     if (File.Exists(exeFile))
                     {
                         Process p = new Process();
                         p.StartInfo.FileName = exeFile;
-                        p.StartInfo.Arguments = filename;
+                        p.StartInfo.Arguments = dataFile;
                         p.Start();
+                    }*/
+
+                    // 发消息给指定用户
+                    var friendList = CQApi.GetFriendList();
+                    foreach (var qqIdStr in GetAlertQQ())
+                    {
+                        var qqId = long.Parse(qqIdStr);
+                        var lateDescStr = "";
+                        foreach (var item in lateNames) lateDescStr += $"\n - {item.Value} [{item.Key}]";
+                        CQApi.SendPrivateMessage(qqId,
+                            $"[打卡机] {offRecTime} · 数据汇总\n" +
+                            $"--------------\n" +
+                            $"打卡{yesCount}人 / 未打卡{lateCount}人\n\n" +
+                            $"未打卡: {lateDescStr}\n" +
+                            $"--------------\n" +
+                            $"(系统自动发送)\n" +
+                            $"Powered by qwqaq.");
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    CQLog.Error($"打卡结束 · 向 通知QQ 自动发送数据失败", ex.Message);    
+                }
             });
             th.Start();
 
-            CQLog.Info($"{endTime} 打卡结束");
-            CheckingBeginTime = null;
+            CQLog.Info($"{offRecTime} 打卡记录器 OFF");
+            OnRecTime = null;
         }
 
         public static string GetSysInfo()
         {
-            string version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
             string nowDateTime = $"{DateTime.Now.Year}-{DateTime.Now.Month}-{DateTime.Now.Day} {DateTime.Now.Hour}:{DateTime.Now.Minute}";
 
-            var str = $"打卡统计程序 v{version}/n/n" +
+            var str = $"打卡机/n/n" +
                 $"- 当前电脑时间: {nowDateTime}/n" +
-                $"- 打卡开始时间：{GetCheckInBeginTimesStr()}/n" +
-                $"- 打卡截止时间：{GetCheckInEndTimesStr()}/n" +
                 $"- 目标监测群号: {GetTargetGrp()}/n" +
+                $"- 打卡开始时间：{GetOnRecTimes_Str()}/n" +
+                $"- 打卡截止时间：{GetOffRecTimes_Str()}/n" +
                 $"- 忽略的QQ账号: {GetIgnoreQQ_Str()}/n" +
-                $"- 管理员QQ账号: {GetAdminQQ_Str()}/n" +
+                $"- 通知的QQ账号: {GetAlertQQ_Str()}/n" +
                 $" (内容仅管理员可见)";
 
             return str.Replace("/n", Environment.NewLine);
@@ -201,25 +220,26 @@ namespace com.qwqaq.time_clock.Code
 
         public static string GetDataFileName(string ext = "")
         {
-            return Path.Combine(DataFileFolder, $"{DateTime.Now.ToString($"yyyy-MM-dd")}_{CheckingBeginTime.Replace(":", "_")}{ext}");
+            return Path.Combine(DataFolder, $"{DateTime.Now.ToString($"yyyy-MM-dd")}_{OnRecTime.Replace(":", "_")}{ext}");
         }
 
-        public static string GetMemberHandledName(string rawName, string qq)
+        public static string GetMemberHandledName(string qq, string grpCard, string nick)
         {
-            var queryNameByQQ = IniFile.Read(qq, "QQName");
-            var result = queryNameByQQ != null && !queryNameByQQ.Trim().Equals("") ? queryNameByQQ.Trim() : rawName;
-            return result.Replace(",", "_"); // 不允许有,号
+            string name = "";
+
+            var storeName = IniFile.Read(qq, INI_KEY.QidToName);
+            if (storeName != null && !storeName.Trim().Equals(""))
+                name = storeName;
+            else if (grpCard != null && !grpCard.Trim().Equals(""))
+                name = grpCard;
+            else if (nick != null && !nick.Trim().Equals(""))
+                name = nick;
+
+            return name.Trim().Replace(",", "_"); // 不允许有,号
         }
         #endregion
 
         #region Configs
-        /// <summary>
-        /// 管理员 QQ
-        /// </summary>
-        /// <returns></returns>
-        public static List<string> GetAdminQQ() => ParseNumber_s(IniFile.Read(INI_KEY.admin_qq));
-        public static string GetAdminQQ_Str() => string.Join(", ", GetAdminQQ());
-
         
         /// <summary>
         /// 目标群 QQ
@@ -228,28 +248,40 @@ namespace com.qwqaq.time_clock.Code
         public static string GetTargetGrp() => IniFile.Read(INI_KEY.target_grp);
 
         /// <summary>
+        /// 打卡记录器开始时间
+        /// </summary>
+        /// <returns></returns>
+        public static List<string> GetOnRecTimes() => ParseTime_s(IniFile.Read(INI_KEY.on_rec_times));
+
+        public static string GetOnRecTimes_Str() => string.Join(", ", GetOnRecTimes());
+
+        /// <summary>
+        /// 打卡记录器结束时间
+        /// </summary>
+        /// <returns></returns>
+        public static List<string> GetOffRecTimes() => ParseTime_s(IniFile.Read(INI_KEY.off_rec_times));
+
+        public static string GetOffRecTimes_Str() => string.Join(", ", GetOffRecTimes());
+
+        /// <summary>
         /// 忽略的 QQ
         /// </summary>
         /// <returns></returns>
         public static List<string> GetIgnoreQQ() => ParseNumber_s(IniFile.Read(INI_KEY.ignore_qq));
         public static string GetIgnoreQQ_Str() => string.Join(", ", GetIgnoreQQ());
 
-
         /// <summary>
-        /// 打卡开始时间
+        /// 通知 QQ
         /// </summary>
         /// <returns></returns>
-        public static List<string> GetCheckInBeginTimes() => ParseTime_s(IniFile.Read(INI_KEY.check_in_begin_times));
-
-        public static string GetCheckInBeginTimesStr() => string.Join(", ", GetCheckInBeginTimes());
+        public static List<string> GetAlertQQ() => ParseNumber_s(IniFile.Read(INI_KEY.alert_qq));
+        public static string GetAlertQQ_Str() => string.Join(", ", GetAlertQQ());
 
         /// <summary>
-        /// 打卡结束时间
+        /// 是否为 静默模式
         /// </summary>
         /// <returns></returns>
-        public static List<string> GetCheckInEndTimes() => ParseTime_s(IniFile.Read(INI_KEY.check_in_end_times));
-
-        public static string GetCheckInEndTimesStr() => string.Join(", ", GetCheckInEndTimes());
+        public static bool GetIsSilentMode() => (IniFile.Read(INI_KEY.silent_mode) == "1") ? true : false;
         #endregion
 
         #region Utils
@@ -259,7 +291,14 @@ namespace com.qwqaq.time_clock.Code
         /// <param name="str"></param>
         public static void SendToTargetGrpMsg(string str)
         {
-            CQApi.SendGroupMessage(long.Parse(GetTargetGrp()), str.Replace("/n", Environment.NewLine));
+            string msg = str.Replace("/n", Environment.NewLine);
+            if (GetIsSilentMode())
+            {
+                CQLog.Info("静默模式不发消息到群组", msg);
+                return;
+            }
+
+            CQApi.SendGroupMessage(long.Parse(GetTargetGrp()), msg);
         }
 
         /// <summary>

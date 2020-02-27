@@ -36,6 +36,7 @@
     <PlatformTarget>x86</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <RegisterForComInterop>false</RegisterForComInterop>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <OutputPath>bin\x86\Release\</OutputPath>
@@ -121,7 +122,7 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\com.qwqaq.check-in-stat.Code\com.qwqaq.time-clock.Code.csproj">
+    <ProjectReference Include="..\com.qwqaq.time-clock.Code\com.qwqaq.time-clock.Code.csproj">
       <Project>{ca809ed0-8141-49c9-baa5-61990d2de7bc}</Project>
       <Name>com.qwqaq.time-clock.Code</Name>
     </ProjectReference>
@@ -162,12 +163,15 @@ if exist "$(TargetDir)$(TargetName)\app.dll" (del /F /A /Q "$(TargetDir)$(Target
 if exist "$(TargetDir)$(TargetName)\app.json" (del /F /A /Q "$(TargetDir)$(TargetName)\app.json")</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>if exist "$(TargetDir)$(TargetName).dll" (
+    <PostBuildEvent>“if exist "$(TargetDir)$(TargetName).dll" (
 move "$(TargetDir)$(TargetName).dll" "$(TargetDir)$(TargetName)" 
 rename "$(TargetDir)$(TargetName)\$(TargetName).dll" "app.dll" 
 ) 
 if exist "$(TargetDir)app.json" (
 move "$(TargetDir)app.json" "$(TargetDir)$(TargetName)" 
-)</PostBuildEvent>
+)
+
+
+xcopy /E /Y "$(ProjectDir)\bin\x86\Debug" C:\Users\qwqaq\Desktop\打卡机\dev</PostBuildEvent>
   </PropertyGroup>
 </Project>

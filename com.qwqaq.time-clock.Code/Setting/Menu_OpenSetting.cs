@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace com.qwqaq.time_clock.Code
+namespace com.qwqaq.time_clock.Code.Setting
 {
     public class Menu_OpenSetting : IMenuCall
     {

@@ -1,4 +1,5 @@
 ﻿using com.qwqaq.time_clock.Code;
+using com.qwqaq.time_clock.Code.Setting;
 using Native.Sdk.Cqp.Interface;
 using System;
 using System.Collections.Generic;
@@ -21,9 +22,9 @@ namespace Native.Core
 		public static void Register(IUnityContainer unityContainer)
 		{
 			// 在 Json 中, 群消息的 name 字段是: 群消息处理, 因此这里注册的第一个参数也是这样填写
-			unityContainer.RegisterType<ICQStartup, Event>("酷Q启动事件");
-			unityContainer.RegisterType<IGroupMessage, Event>("群消息处理");
-			unityContainer.RegisterType<IPrivateMessage, Event>("私聊消息处理");
+			unityContainer.RegisterType<ICQStartup, OnCQStartup>("酷Q启动事件");
+			unityContainer.RegisterType<IGroupMessage, MessageHandler>("群消息处理");
+			unityContainer.RegisterType<IPrivateMessage, MessageHandler>("私聊消息处理");
 
 			unityContainer.RegisterType<IMenuCall, Menu_OpenSetting>("设置");
 		}

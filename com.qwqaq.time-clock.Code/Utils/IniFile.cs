@@ -7,12 +7,25 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace com.qwqaq.time_clock.Code
+namespace com.qwqaq.time_clock.Code.Utils
 {
+    public static class INI_KEY
+    {
+        public const string QidToName = "QidToName";
+        public const string alert_qq = "alert_qq";
+        public const string ignore_qq = "ignore_qq";
+        public const string target_grp = "target_grp";
+
+        public const string on_rec_times = "on_rec_times";
+        public const string off_rec_times = "off_rec_times";
+
+        public const string silent_mode = "silent_mode";
+    }
+
     public class IniFile
     {
         string Path;
-        string EXE = "CheckInStat"; // Assembly.GetExecutingAssembly().GetName().Name;
+        public static string APP_NAME = "TimeClock"; // Assembly.GetExecutingAssembly().GetName().Name;
 
         [DllImport("kernel32", CharSet = CharSet.Ansi)]
         static extern long WritePrivateProfileString(string Section, string Key, string Value, string FilePath);
@@ -22,45 +35,34 @@ namespace com.qwqaq.time_clock.Code
 
         public IniFile(string IniPath = null)
         {
-            Path = new FileInfo(IniPath ?? EXE + ".ini").FullName.ToString();
+            Path = new FileInfo(IniPath ?? APP_NAME + ".ini").FullName.ToString();
         }
 
         public string Read(string Key, string Section = null)
         {
             var RetVal = new StringBuilder(255);
-            GetPrivateProfileString(Section ?? EXE, Key, "", RetVal, 255, Path);
+            GetPrivateProfileString(Section ?? APP_NAME, Key, "", RetVal, 255, Path);
             return RetVal.ToString();
         }
 
         public void Write(string Key, string Value, string Section = null)
         {
-            WritePrivateProfileString(Section ?? EXE, Key, Value, Path);
+            WritePrivateProfileString(Section ?? APP_NAME, Key, Value, Path);
         }
 
         public void DeleteKey(string Key, string Section = null)
         {
-            Write(Key, null, Section ?? EXE);
+            Write(Key, null, Section ?? APP_NAME);
         }
 
         public void DeleteSection(string Section = null)
         {
-            Write(null, null, Section ?? EXE);
+            Write(null, null, Section ?? APP_NAME);
         }
 
         public bool KeyExists(string Key, string Section = null)
         {
             return Read(Key, Section).Length > 0;
         }
-    }
-
-    public static class INI_KEY
-    {
-        public const string QQName = "QQName";
-        public const string admin_qq = "admin_qq";
-        public const string ignore_qq = "ignore_qq";
-        public const string target_grp = "target_grp";
-
-        public const string check_in_begin_times = "check_in_begin_times";
-        public const string check_in_end_times = "check_in_end_times";
     }
 }
