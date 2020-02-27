@@ -1,0 +1,52 @@
+// 酷Q 的Json文件支持以 // 开头的注释。
+// 开发模式下，应用的 app.dll 及 app.json 文件须放在 dev/[appid]/ 目录下，应用 AppInfo 函数返回的内容须改为 appid
+// 如 appid=com.example.demo, 则dll及json文件需分别放在 dev/com.example.demo/app.dll、dev/com.example.demo/app.json
+// [重要] appid 规则见 https://cqp.im/v9/appid
+{
+	"ret": 1,
+	"apiver": 9,
+	"name": "打卡机",
+	"version": "1.0.0",
+	"version_id": 1,
+	"author": "qwqcode <1149527164@qq.com>",
+	"description": "",
+	"event": [
+		{
+			"id": 1,
+			"type": 1001,
+			"name": "酷Q启动事件",
+			"function": "eventCQStartup",
+			"priority": 40000
+		},
+		{
+			"id": 2,
+			"type": 2,
+			"name": "群消息处理",
+			"function": "eventGroupMsg",
+			"priority": 30000
+		},
+		{
+			"id": 3,
+			"type": 21,
+			"name": "私聊消息处理",
+			"function": "eventPrivateMsg",
+			"priority": 30000
+		}
+	],
+	"menu": [
+		{
+			"name": "设置",
+			"function": "_menuOpenSetting"
+		}
+	],
+	"status": [],
+	"auth": [
+		101, // 发送群消息
+		106, // 发送私聊消息
+		130, // 取群成员信息
+		160, //	取群成员列表 !!
+		132, // 取群信息
+		161, // 取群列表
+		162 // 取好友列表
+	]
+}
