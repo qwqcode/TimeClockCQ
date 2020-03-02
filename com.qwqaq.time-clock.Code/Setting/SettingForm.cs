@@ -23,7 +23,10 @@ namespace com.qwqaq.time_clock.Code.Setting
 
         private void RefreshValFromFile()
         {
-            target_grp.Text = App.GetTargetGrp();
+            app_nick_name.Text = App.GetAppNickName();
+            chat_grps.Text = App.GetChatGrps_Str();
+
+            rec_grp.Text = App.GetRecGrp();
             on_rec_times.Text = App.GetOnRecTimes_Str();
             off_rec_times.Text = App.GetOffRecTimes_Str();
             ignore_qq.Text = App.GetIgnoreQQ_Str();
@@ -49,7 +52,9 @@ namespace com.qwqaq.time_clock.Code.Setting
             };
             saveBtnTimer.Start();
 
-            App.IniFile.Write(INI_KEY.target_grp, target_grp.Text.Trim());
+            App.IniFile.Write(INI_KEY.app_nick_name, app_nick_name.Text.Trim());
+            App.IniFile.Write(INI_KEY.chat_grps, chat_grps.Text.Trim());
+            App.IniFile.Write(INI_KEY.rec_grp, rec_grp.Text.Trim());
             App.IniFile.Write(INI_KEY.on_rec_times, on_rec_times.Text.Trim());
             App.IniFile.Write(INI_KEY.off_rec_times, off_rec_times.Text.Trim());
             App.IniFile.Write(INI_KEY.ignore_qq, ignore_qq.Text.Trim());

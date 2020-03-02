@@ -58,7 +58,7 @@ namespace com.qwqaq.time_clock.Code
         /// <returns></returns>
         public static bool GetIsRecFuncEnable()
         {
-            return GetTargetGrp() != "" && GetOnRecTimes_Str() != "" && GetOffRecTimes_Str() != "";
+            return GetRecGrp() != "" && GetOnRecTimes_Str() != "" && GetOffRecTimes_Str() != "";
         }
 
         /// <summary>
@@ -102,14 +102,36 @@ namespace com.qwqaq.time_clock.Code
             CQLog.Info($"{onRecTime} 打卡记录器 ON");
 
             // [CQ:face,id=187] 幽灵, [CQ:face,id=178] 滑稽
-            SendToTargetGrpMsg(
-                $"[打卡机] 哔~\n" +
+            var primMsg = 
                 $"--------------\n" +
                 $"{onRecTime} · 打卡机启动 [CQ:face,id=187][CQ:face,id=187]\n" +
                 $"(断电时间: {GetOffRecTimes_Str()})\n" +
                 $"Powered by qwqaq.\n" +
-                $"--------------\n[课表] {GetSchedule(noWeekStr: true)}"
+                $"--------------";
+
+            SendToTargetGrpMsg(
+                $"[打卡机] 哔~\n" +
+                $"{primMsg}\n" +
+                $"[课表] {Lesson.Get(noWeekStr: true)}"
             );
+
+            var th = new Thread(() =>
+            {
+                try
+                {
+                    // 发消息给指定用户
+                    SendToAlertQQ(
+                        $"[打卡机] {onRecTime} · 启动通知\n" +
+                        $"{primMsg}\n" +
+                        $"(系统自动发送)"
+                    );
+                }
+                catch (Exception ex)
+                {
+                    CQLog.Error($"打卡开始 · 向 通知QQ 自动发送数据失败", ex.Message);
+                }
+            });
+            th.Start();
         }
 
         /// <summary>
@@ -121,12 +143,12 @@ namespace com.qwqaq.time_clock.Code
             if (OnRecTime == null) return; // Rec 本来就是关闭状态
 
             // 添加未打卡成员
-            string grpId = GetTargetGrp();
+            string grpId = GetRecGrp();
 
             // 数据文件
             string dataFile = GetDataFileName();
             if (!File.Exists(dataFile)) File.Create(dataFile).Dispose();
-            
+
             var recStrItems = File.ReadAllLines(dataFile).Where(o => !o.Trim().Equals("")).ToList(); // 已打卡的字符串数据
 
             var yesCount = recStrItems.Count(); // 已打卡人数
@@ -156,7 +178,7 @@ namespace com.qwqaq.time_clock.Code
                 $"{offRecTime} · 打卡机已断电 [CQ:face,id=187][CQ:face,id=187]\n" +
                 $"打卡{yesCount}人 / 未打卡{lateCount}人\n" +
                 $"(下次启动时间: {GetOnRecTimes_Str()})\n" +
-                $"--------------\n[课表] {GetSchedule(noWeekStr: true)}"
+                $"--------------\n[课表] {Lesson.Get(noWeekStr: true)}"
             );
 
             // 保存为表格
@@ -165,35 +187,19 @@ namespace com.qwqaq.time_clock.Code
             {
                 try
                 {
-                    /*var exeFile = Path.Combine(DataFolder, "ToExcelTool.exe");
-                    if (File.Exists(exeFile))
-                    {
-                        Process p = new Process();
-                        p.StartInfo.FileName = exeFile;
-                        p.StartInfo.Arguments = dataFile;
-                        p.Start();
-                    }*/
-
                     // 发消息给指定用户
-                    var friendList = CQApi.GetFriendList();
-                    foreach (var qqIdStr in GetAlertQQ())
-                    {
-                        var qqId = long.Parse(qqIdStr);
-                        var lateDescStr = "";
-                        foreach (var item in lateNames) lateDescStr += $"\n - {item.Value} [{item.Key}]";
-                        CQApi.SendPrivateMessage(qqId,
-                            $"[打卡机] {offRecTime} · 数据汇总\n" +
-                            $"--------------\n" +
-                            $"打卡{yesCount}人 / 未打卡{lateCount}人\n\n" +
-                            $"未打卡: {lateDescStr}\n" +
-                            $"--------------\n" +
-                            $"(系统自动发送)\n" +
-                            $"Powered by qwqaq.");
-                    }
+                    var lateDescStr = "";
+                    foreach (var item in lateNames) lateDescStr += $"\n - {item.Value} [{item.Key}]";
+                    SendToAlertQQ($"[打卡机] {offRecTime} · 数据汇总\n" +
+                        $"--------------\n" +
+                        $"打卡{yesCount}人 / 未打卡{lateCount}人\n\n" +
+                        $"未打卡: {(lateDescStr != "" ? lateDescStr : "(无)")}\n" +
+                        $"--------------\n" +
+                        $"(系统自动发送)");
                 }
                 catch (Exception ex)
                 {
-                    CQLog.Error($"打卡结束 · 向 通知QQ 自动发送数据失败", ex.Message);    
+                    CQLog.Error($"打卡结束 · 向 通知QQ 自动发送数据失败", ex.Message);
                 }
             });
             th.Start();
@@ -202,13 +208,22 @@ namespace com.qwqaq.time_clock.Code
             OnRecTime = null;
         }
 
+        private static void SendToAlertQQ(string msg)
+        {
+            foreach (var qqIdStr in GetAlertQQ())
+            {
+                var qqId = long.Parse(qqIdStr);
+                CQApi.SendPrivateMessage(qqId, msg);
+            }
+        }
+
         public static string GetSysInfo()
         {
             string nowDateTime = $"{DateTime.Now.Year}-{DateTime.Now.Month}-{DateTime.Now.Day} {DateTime.Now.Hour}:{DateTime.Now.Minute}";
 
-            var str = $"打卡机/n/n" +
+            var str = $"{GetAppNickName()}/n/n" +
                 $"- 当前电脑时间: {nowDateTime}/n" +
-                $"- 目标监测群号: {GetTargetGrp()}/n" +
+                $"- 目标监测群号: {GetRecGrp()}/n" +
                 $"- 打卡开始时间：{GetOnRecTimes_Str()}/n" +
                 $"- 打卡截止时间：{GetOffRecTimes_Str()}/n" +
                 $"- 忽略的QQ账号: {GetIgnoreQQ_Str()}/n" +
@@ -240,12 +255,18 @@ namespace com.qwqaq.time_clock.Code
         #endregion
 
         #region Configs
-        
+
+        public static string GetAppNickName() {
+            var nickName = IniFile.Read(INI_KEY.app_nick_name);
+            if (nickName == null || nickName.Trim().Equals("")) return "打卡机";
+            return nickName;
+        }
+
         /// <summary>
-        /// 目标群 QQ
+        /// 打卡记录目标群 QQ
         /// </summary>
         /// <returns></returns>
-        public static string GetTargetGrp() => IniFile.Read(INI_KEY.target_grp);
+        public static string GetRecGrp() => IniFile.Read(INI_KEY.rec_grp);
 
         /// <summary>
         /// 打卡记录器开始时间
@@ -277,6 +298,14 @@ namespace com.qwqaq.time_clock.Code
         public static List<string> GetAlertQQ() => ParseNumber_s(IniFile.Read(INI_KEY.alert_qq));
         public static string GetAlertQQ_Str() => string.Join(", ", GetAlertQQ());
 
+
+        /// <summary>
+        /// 互动群号
+        /// </summary>
+        /// <returns></returns>
+        public static List<string> GetChatGrps() => ParseNumber_s(IniFile.Read(INI_KEY.chat_grps));
+        public static string GetChatGrps_Str() => string.Join(", ", GetChatGrps());
+
         /// <summary>
         /// 是否为 静默模式
         /// </summary>
@@ -289,16 +318,11 @@ namespace com.qwqaq.time_clock.Code
         /// 发送消息到目标群
         /// </summary>
         /// <param name="str"></param>
-        public static void SendToTargetGrpMsg(string str)
+        private static void SendToTargetGrpMsg(string msg)
         {
-            string msg = str.Replace("/n", Environment.NewLine);
-            if (GetIsSilentMode())
-            {
-                CQLog.Info("静默模式不发消息到群组", msg);
-                return;
-            }
+            if (App.GetIsSilentMode()) { App.CQLog.Info("静默模式不发消息", msg); return; }
 
-            CQApi.SendGroupMessage(long.Parse(GetTargetGrp()), msg);
+            CQApi.SendGroupMessage(long.Parse(GetRecGrp()), msg);
         }
 
         /// <summary>
@@ -376,43 +400,12 @@ namespace com.qwqaq.time_clock.Code
 
         }
 
-        public static string GetTodayWeek()
+        public static string GetWeek(int moveDay = 0)
         {
+            var dt = DateTime.Now;
+            if (moveDay != 0) dt = dt.AddDays(moveDay);
             string[] days = new string[] { "周日", "周一", "周二", "周三", "周四", "周五", "周六" };
-            return days[Convert.ToInt16(DateTime.Now.DayOfWeek)];
-        }
-
-        // 发送今日课程
-        public static string GetClassNameByDt(DateTime dt)
-        {
-            return "";
-        }
-
-        public static string GetSchedule(bool noWeekStr = false)
-        {
-            var week = GetTodayWeek();
-            var str = noWeekStr ? "" : $"[{week}] ";
-            if (week == "周一")
-                str += "数 物 语 | 生 英 化";
-            else if (week == "周二")
-                str += "语 数 化 | 物 生 英";
-            else if (week == "周三")
-                str += "数 化 英 | 数 语 生";
-            else if (week == "周四")
-                str += "化 数 英 | 物 生 语";
-            else if (week == "周五")
-                str += "化 数 英 | 生 语 物";
-            else if (week == "周六")
-                str += "语 数 化 | 物 英 生";
-            else if (week == "周日")
-                str += "休息无课";
-
-            return str;
-        }
-
-        public static void SendSchedule()
-        {
-            SendToTargetGrpMsg(GetSchedule());
+            return days[Convert.ToInt16(dt.DayOfWeek)];
         }
         #endregion
     }

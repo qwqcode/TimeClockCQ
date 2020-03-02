@@ -11,10 +11,12 @@ namespace com.qwqaq.time_clock.Code.Utils
 {
     public static class INI_KEY
     {
+        public const string app_nick_name = "app_nick_name";
+        public const string chat_grps = "chat_grps";
         public const string QidToName = "QidToName";
         public const string alert_qq = "alert_qq";
         public const string ignore_qq = "ignore_qq";
-        public const string target_grp = "target_grp";
+        public const string rec_grp = "rec_grp";
 
         public const string on_rec_times = "on_rec_times";
         public const string off_rec_times = "off_rec_times";

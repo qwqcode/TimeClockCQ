@@ -54,6 +54,7 @@
     <Reference Include="INIFileParser, Version=2.5.2.0, Culture=neutral, PublicKeyToken=79af7b307b65cf3c, processorArchitecture=MSIL">
       <HintPath>..\packages\ini-parser.2.5.2\lib\net20\INIFileParser.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.JScript" />
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -63,6 +64,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Security" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -72,9 +74,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GlobalConstant.cs" />
     <Compile Include="OnCQStartup.cs" />
     <Compile Include="MessageHandler.cs" />
     <Compile Include="App.cs" />
+    <Compile Include="Utils\ChineseNumber.cs" />
+    <Compile Include="Utils\Lesson.cs" />
     <Compile Include="Utils\IniFile.cs" />
     <Compile Include="Setting\Menu_OpenSetting.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -89,6 +94,7 @@
     <Compile Include="Setting\SettingForm.Designer.cs">
       <DependentUpon>SettingForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Utils\TencentAiChatApi.cs" />
     <Compile Include="Utils\RecMember.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -111,6 +117,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\icon.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
