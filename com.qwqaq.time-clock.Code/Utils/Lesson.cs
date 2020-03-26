@@ -27,9 +27,18 @@ namespace com.qwqaq.time_clock.Code.Utils
         /// <returns></returns>
         public static string AskForLesson(string gotMsg)
         {
+            if (gotMsg == null || gotMsg.Trim().Equals(""))
+                return null;
+
+            gotMsg = gotMsg.Trim();
             gotMsg = Regex.Replace(gotMsg, "\\[CQ:.*\\]", "");
 
-            if (Regex.IsMatch(gotMsg, "课程?表(帮助|[指命]令|操作|文档)") || gotMsg.ToLower().Contains("help"))
+            if (gotMsg.Length >= 15) // 文字超过 15 不回应
+            {
+                return null;
+            }
+
+            if (Regex.IsMatch(gotMsg, "(课程?|时间?)表(帮助|[指命]令|操作|文档)") || gotMsg.ToLower().Contains("help"))
             {
                 // 课表功能帮助
                 return GetHelpDoc();
@@ -46,7 +55,12 @@ namespace com.qwqaq.time_clock.Code.Utils
             }
 
             /* 问上课时间 */
-            if (Regex.IsMatch(gotMsg, "(几|时|久|钟).*(上课|下课)|(上课|下课).*(几|时|久|钟)"))
+            if (Regex.IsMatch(gotMsg.Trim(), "^时间表$"))
+            {
+                return GetLessonTimes();
+            }
+
+            if (Regex.IsMatch(gotMsg, "(几|时|久|钟).*(上课|下课|打卡)|(上课|下课|打卡).*(几|时|久|钟)"))
             {
                 return GetLessonTimes();
             }
@@ -94,15 +108,13 @@ namespace com.qwqaq.time_clock.Code.Utils
         private static string GetHelpDoc()
         {
             return "" +
-                "课表操作 · 帮助文档\n" +
+                "问课操作 · 帮助\n" +
                 "--------------\n" +
                 "你可以这样问：\n" +
-                "- 今天有啥课\n" +
-                "- 明天什么课\n" +
-                "- 后天哪些课\n" +
-                "- 万天上啥课\n" +
-                "- 大前天啥课\n" +
-                "- 完整课表\n" +
+                "- 今天啥课\n" +
+                "- 几点上课/打卡\n" +
+                "- 完整课表/时间表\n" +
+                "- 明天/后天/万天/大前天 什么课\n" +
                 "- 一亿年后上什么课？[CQ:face,id=178][CQ:face,id=178][CQ:face,id=178]\n" +
                 "--------------\n" +
                 "Powered by qwqaq.";
@@ -113,15 +125,15 @@ namespace com.qwqaq.time_clock.Code.Utils
             var str = "";
 
             var AM = "" +
-                "- 07:20 打卡截止\n" +
+                "打卡 07:10-07:30\n" +
                 "① 08:00-09:00\n" +
                 "② 09:10-10:10\n" +
                 "③ 10:20-11:20\n";
             var PM = "" +
-                "- 14:20 打卡截止\n" +
+                "打卡 13:50-14:20\n" +
                 "④ 14:30-15:30\n" +
                 "⑤ 15:40-16:40\n" +
-                "⑤ 16:50-17:50\n";
+                "⑥ 16:50-17:50\n";
 
             str += $"{AM}{PM}";
 

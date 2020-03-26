@@ -143,7 +143,7 @@ namespace com.qwqaq.time_clock.Code
 
                     // 并且欢迎通知
                     var welcomeStrs = new string[] { "哔", "嘀", "咕", "吼", "哈", "叮", "嗷", "吱" };
-                    var rd_welcome = welcomeStrs[new Random().Next(0, welcomeStrs.Length - 1)];
+                    var rd_welcome = welcomeStrs[new Random(Guid.NewGuid().GetHashCode()).Next(0, welcomeStrs.Length - 1)];
                     msg = $"[打卡机] {rd_welcome}~ 欢迎~ \"{memberName}\" 已打卡 √ [No.{hadClockInCount + 1}][{dt_timespan_str}] [CQ:face,id=187][CQ:face,id=187]";
 
                     GrpAtAndSendMsg(e.FromGroup, e.FromQQ, msg);
