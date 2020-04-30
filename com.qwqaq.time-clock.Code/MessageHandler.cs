@@ -119,7 +119,7 @@ namespace com.qwqaq.time_clock.Code
             if (e.FromQQ.IsLoginQQ || App.GetIgnoreQQ().Contains(e.FromQQ.Id.ToString())) return; // 忽略的 QQ
             DateTime dt_now = DateTime.Now; // 打卡时间
             string dt_str = dt_now.ToString("yyyy-MM-dd HH:mm:ss");
-            string dt_timespan_str = dt_now.ToString("HH:mm:ss");
+            string dt_timespan_str = dt_now.ToString("HH:mm:ss.ffff");
 
             string dataFile = App.GetDataFileName();
             if (!File.Exists(dataFile)) File.Create(dataFile).Dispose(); // 数据文件不存在，则初始化文件
